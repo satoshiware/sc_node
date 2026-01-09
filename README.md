@@ -20,11 +20,41 @@ The SC Node (Sovereign Circle Node) is a low-cost, self-hosted mini-PC setup des
 ## Proxmox VE
 Proxmox VE serves as the foundational hypervisor for the SC Node, providing robust virtualization capabilities for running all associated software components efficiently on a single hardware platform. To ensure secure and simplified network exposure, the SC Node is configured with NAT addressing, presenting only a single external IP address to the broader network while handling internal traffic for VMs and containers. By default, the device name is set to "SC Node", but can be easily configured in the SC Node install script.
 
-## Softare
-AZCoin Full Node w/ Basic Configuration
+## Current Software Implementation (Jan 8th 2026)
+### AZCoin Full Node w/ Basic Configuration
 * ZeroMQ (ZMQ) Enabled for Push-Based Notifications
 * API: Python w/ FastAPI (RESTful & WebSockets)
-  * Wallet Needs, Need to create a unique wallet for each member with the ability to destroy wallets ensuring all funds are transferred to the master wallet
+  * Single main wallet with accounting/labels — generate unique addresses per user, and track balances externally in your database.
+  * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
+* Backup/Restore: wallet.dat file
 
-    Master w
-    The ability to 
+### Bitcoin Pruned Node w/ Basic Configuration
+* ZeroMQ (ZMQ) Enabled for Push-Based Notifications
+* API: Python w/ FastAPI (RESTful & WebSockets)
+  * Main wallet with accounting/labels — generate unique addresses per user, and track balances externally in your database.
+  * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
+* Backup/Restore: wallet.dat file
+* Prune=25000 (~25-100 GB); 6 months worth of Bitcoin Blockchain data to help keep Core Lightning in sync.
+
+### Core Lightning Node
+* Single large channel w/ the SC Cluster Node
+* Auto balancing programmed with the trusted SC Cluster Node
+* API: Python w/ FastAPI (RESTful & WebSockets)
+ * Install reckless:cl-zmq plugin for local push notifications
+ * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
+* Backup/Restore: hsm_secret, lightningd.sqlite3, and emergency.recover files
+
+### Stratum V2 Translation Proxy (SRI)
+* Configure w/ High Verbosity (RUST_LOG=info or debug)
+* API: Python w/ FastAPI (RESTful & WebSockets)
+ * Use Python's asyncio to tail the log file (or pipe stdout) in real time.
+ * Process data as desired and store rolling windows to a lightweight DB (SQLite).
+ * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
+* Backup: None
+
+### Lightweight, self-hosted exchange service to enable seamless swapping between AZCoin (or the local microcurrency) and SATS.
+* Mobile App API: Python w/ FastAPI (RESTful & WebSockets)
+ * Provide Lightning as a Service (LaaS)
+
+### Member Dashboard: A secure, user-friendly web interface enabling community members to interact with the SC Node's exchange, perform deposits and withdrawals, mining configuration, and manage basic account functions such as viewing transaction history, balances, and open orders.
+
