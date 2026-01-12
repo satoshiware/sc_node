@@ -24,9 +24,11 @@ Proxmox VE serves as the foundational hypervisor for the SC Node, providing robu
 ### AZCoin Full Node w/ Basic Configuration
 * ZeroMQ (ZMQ) Enabled for Push-Based Notifications
 * API: Python w/ FastAPI (RESTful & WebSockets)
-  * Single main wallet with accounting/labels — generate unique addresses per user, and track balances externally in your database.
+  * Single main wallet with accounting/labels — generate unique addresses per user, and track balances externally in the exchange database.
   * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
-* Backup/Restore: wallet.dat file
+  * The ability to sweep private keys
+* Backup/Restore: wallet.dat files
+* Use the Assume Valid feature to speed up Initial Blockchain Download (IBD)
 
 ### Bitcoin Pruned Node w/ Basic Configuration
 * ZeroMQ (ZMQ) Enabled for Push-Based Notifications
@@ -35,26 +37,44 @@ Proxmox VE serves as the foundational hypervisor for the SC Node, providing robu
   * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
 * Backup/Restore: wallet.dat file
 * Prune=25000 (~25-100 GB); 6 months worth of Bitcoin Blockchain data to help keep Core Lightning in sync.
+* Use the Assume Valid feature to speed up Initial Blockchain Download (IBD)
 
 ### Core Lightning Node
 * Single large channel w/ the SC Cluster Node
 * Auto balancing programmed with the trusted SC Cluster Node
 * API: Python w/ FastAPI (RESTful & WebSockets)
- * Install reckless:cl-zmq plugin for local push notifications
- * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
+  * Install reckless:cl-zmq plugin for local push notifications
+  * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
 * Backup/Restore: hsm_secret, lightningd.sqlite3, and emergency.recover files
 
-### Stratum V2 Translation Proxy (SRI)
+### Stratum V2 Translation Proxy (SRI) (Bitcoin)
 * Configure w/ High Verbosity (RUST_LOG=info or debug)
 * API: Python w/ FastAPI (RESTful & WebSockets)
- * Use Python's asyncio to tail the log file (or pipe stdout) in real time.
- * Process data as desired and store rolling windows to a lightweight DB (SQLite).
- * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
+  * Use Python's asyncio to tail the log file (or pipe stdout) in real time.
+  * Process data as desired and store rolling windows to a lightweight DB (SQLite).
+  * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
 * Backup: None
 
-### Lightweight, self-hosted exchange service to enable seamless swapping between AZCoin (or the local microcurrency) and SATS.
-* Mobile App API: Python w/ FastAPI (RESTful & WebSockets)
- * Provide Lightning as a Service (LaaS)
+### Stratum V2 Translation Proxy (SRI) (AZCoin)
+* Configure w/ High Verbosity (RUST_LOG=info or debug)
+* API: Python w/ FastAPI (RESTful & WebSockets)
+  * Use Python's asyncio to tail the log file (or pipe stdout) in real time.
+  * Process data as desired and store rolling windows to a lightweight DB (SQLite).
+  * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
+* Backup: None
 
-### Member Dashboard: A secure, user-friendly web interface enabling community members to interact with the SC Node's exchange, perform deposits and withdrawals, mining configuration, and manage basic account functions such as viewing transaction history, balances, and open orders.
+### Exchange: AZCoin (or the local microcurrency) w/ SATS
+* Contains all member accounting (including deposit addresses)
+* Connects w/ Bitcoin Core, AZCoin, and Core Lightning nodes to acquire and monitor deposit addresses
+* Connects with Stratum Servers and updates accounts with mining payouts
+* API: Python w/ FastAPI (RESTful & WebSockets)
+  * Provide Lightning as a Service (LaaS)
+  * Generate deposit addresses (or lightning invoices)
+  * Has the ability to withdraw (send)
+
+### Member Dashboard
+* Shared login with BTCofAZ w/ 2FA<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+* Mining Info: Stats, Histogram, and Payouts
+* Wallet: See Totals, Make Deposits & Withdrawals, and Inspect History (w/ Addresses)
+* Exchange: Limit Orders, Personal & Global History, Trading Interface, Charts, etc.
 
