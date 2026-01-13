@@ -63,7 +63,7 @@ Proxmox VE serves as the foundational hypervisor for the SC Node, providing robu
   * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
 * Backup: None
 
-### Exchange: AZCoin (or the local microcurrency) w/ SATS
+### Exchange: AZCoin (and/or the local microcurrency) w/ SATS
 * Contains all member accounting (including deposit addresses)
 * Connects w/ Bitcoin Core, AZCoin, and Core Lightning nodes to acquire and monitor deposit addresses
 * Connects with Stratum Servers and updates accounts with mining payouts
@@ -73,8 +73,16 @@ Proxmox VE serves as the foundational hypervisor for the SC Node, providing robu
   * Has the ability to withdraw (send)
 
 ### Member Dashboard
-* Shared login with BTCofAZ w/ 2FA<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+* Shared login with BTCofAZ w/ Local 2FA
+* Account Settings: Configure/Reset 2FA
 * Mining Info: Stats, Histogram, and Payouts
 * Wallet: See Totals, Make Deposits & Withdrawals, and Inspect History (w/ Addresses)
 * Exchange: Limit Orders, Personal & Global History, Trading Interface, Charts, etc.
+* SC Transparancy Audit
 
+### Owner Dashboard
+* Overall Health
+* Upgrades
+* Manage Members: Reset 2FA, Make Withdrawals, See Exchange/Account Info
+* Cold Storage Management
+* See Overall Mining Stats & Payouts
