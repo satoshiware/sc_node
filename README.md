@@ -86,3 +86,35 @@ Proxmox VE serves as the foundational hypervisor for the SC Node, providing robu
 * Manage Members: Reset 2FA, Make Withdrawals, See Exchange/Account Info
 * Cold Storage Management
 * See Overall Mining Stats & Payouts
+
+## Create Debian (Current "Stable" Release) Full Install USB Stick (using Windows)
+
+Note: Full install (iso-dvd) is recommended over net install (iso-cd) to speed up installation on dozens or more SC Nodes.
+	  Select "network mirror" during install to ensure all packages are the latest. 
+	  Also, a USB 3.0 Stick is recommended to speed things up further.
+
+### Download the Debian .iso Image
+	* Go to https://cdimage.debian.org/debian-cd/current
+	* Select Link for Target CPU (Options: amd64, arm64, riscv64, etc.)
+	* Select "iso-dvd" Link
+	* Download Files:
+ 	    -SHA256SUMS.sign
+	    -SHA256SUMS
+	    -debian-XX.X.X-xxxxx-DVD-1.iso
+
+### Verify .iso Image
+	* Download/Install Gpg4win (https://www.gpg4win.org)
+ 	    Note: Only GnuPG is Needed (Not Kleopatra, GpgOL, GpgOL/Web, GpgEX, etc.)
+	* From the Powershell
+ 	    -Import and verify Debian's signing public keys
+			     gpg --keyserver hkps://keyring.debian.org --recv-keys 0x6294BE9B # Download
+			     gpg --list-keys "Debian" # Verify
+ 	    -Locate the directory that contains the downloads
+ 	    -Verify signature. Expect a "WARNING" if Debian's key has not been certified with a "trusted" signature!
+			     gpg --keyring .\debian-signing-public-key.gpg --verify SHA256SUMS.sign SHA256SUMS
+ 	    -Verify ISO checksum matches the checksum found in the SHA256SUMS file
+			     Get-FileHash debian-XX.X.X-xxxxx-DVD-1.iso -Algorithm SHA256
+			     Select-String "debian-XX.X.X-xxxxx-DVD-1.iso" SHA256SUMS
+
+### Download/Install Rufus (If not already; Located on Microsoft store)
+### Use Rufus to "burn" the .iso image to the USB Stick (default options are good)
