@@ -22,7 +22,7 @@
 #      • Update BASE_URL if path moves (rare)
 #      • Adjust grep -oP regex in ISO_NAME line if filename pattern changes
 #   2. GPG verification fails? → sudo apt install --reinstall debian-archive-keyring
-#   3. ISO rebuild fails? → Ensure xorriso is installed (preferred) or genisoimage works
+#   3. ISO rebuild fails? → Ensure xorriso is installed
 #   4. Boot doesn't auto-install? → Verify preseed.cfg syntax & path in sed lines
 #      • Try manual boot param edit at GRUB: preseed/file=/cdrom/preseed.cfg
 #   5. General breakage? → Run with bash -x for debug, or search Debian installer docs
@@ -39,11 +39,10 @@
 ########################################################################################
 
 set -euo pipefail
-trap 'echo "Error - cleaning up..."; rm -rf "$TEMP_DIR" 2>/dev/null' EXIT ERR
 
 # Config
 BASE_URL="https://cdimage.debian.org/debian-cd/current"
-TEMP_DIR="/tmp/debian-preseed-$(date +%s)"
+TEMP_DIR="./tmp-debian-preseed"
 PRESEED_DEFAULT="preseed.cfg"           # Default file in script dir (optional)
 DEBIAN_KEY_ID="0x6294BE9B"                #  Created in 2011. Remains the primary key used to sign official stable ISO images.
 ARCHES=("amd64" "arm64" "ppc64el" "riscv64" "s390x") # List of 64 bit CPU types
@@ -59,7 +58,6 @@ REQUIRED_PKGS=(
     coreutils   # sha256sum, etc.
     rsync       # copy ISO contents
     xorriso     # preferred for hybrid ISO
-    genisoimage # fallback
     isolinux    # boot files
     dosfstools  # FAT utils
     usbutils # lsusb cmd: utility to display information about all USB devices
@@ -153,7 +151,7 @@ mkdir -p "$TEMP_DIR"
 cd "$TEMP_DIR"
 
 echo "Downloading ISO, SHA256SUMS, signature..."
-curl -LO "$ISO_URL"
+curl -LO -C "$ISO_URL"
 curl -LO "$HASH_URL"
 curl -LO "$SIG_URL"
 
@@ -191,19 +189,11 @@ sed -i '/append .*initrd=/ s/$/ preseed\/file=\/cdrom\/preseed.cfg auto=true pri
 # Rebuild hybrid ISO
 # ──────────────────────────────────────────────────────────────────────────────
 echo "Building modified ISO..."
-if command -v xorriso >/dev/null; then
-    xorriso -as mkisofs -o modified.iso \
-        -b isolinux/isolinux.bin -c isolinux/boot.cat \
-        -no-emul-boot -boot-load-size 4 -boot-info-table \
-        -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot \
-        -J -R -V 'Debian Preseed Installer' extracted/
-else
-    genisoimage -o modified.iso \
-        -b isolinux/isolinux.bin -c isolinux/boot.cat \
-        -no-emul-boot -boot-load-size 4 -boot-info-table \
-        -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot \
-        -J -R -V 'Debian Preseed Installer' extracted/
-fi
+xorriso -as mkisofs -o modified.iso \
+    -b isolinux/isolinux.bin -c isolinux/boot.cat \
+    -no-emul-boot -boot-load-size 4 -boot-info-table \
+    -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot \
+    -J -R -V 'Debian Preseed Installer' extracted/
 
 [[ -f modified.iso ]] || { echo "ISO build failed"; exit 1; }
 
