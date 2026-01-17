@@ -4,12 +4,11 @@
 # AUTHOR:   Grok 4 (built by xAI)
 # PURPOSE:  Create bootable Debian DVD-1 USB with preseed for fully unattended install
 #           • Uses official current stable hybrid ISO (dd to USB)
-#           • Dynamic arch + version fetch from cdimage.debian.org
 #           • Verifies SHA256 + GPG signature via debian-archive-keyring
 #           • Injects preseed.cfg at root → boot param: preseed/file=/cdrom/preseed.cfg
 #
 # REQUIRES (auto-installed if missing):
-#   curl gnupg coreutils rsync xorriso genisoimage isolinux dosfstools debian-archive-keyring
+#   curl gnupg coreutils rsync xorriso genisoimage isolinux dosfstools usbutils
 #   sudo privileges
 #
 # SAFETY FEATURES:
@@ -23,11 +22,10 @@
 #      • Update BASE_URL if path moves (rare)
 #      • Adjust grep -oP regex in ISO_NAME line if filename pattern changes
 #   2. GPG verification fails? → sudo apt install --reinstall debian-archive-keyring
-#   3. No architectures listed? → Fallback list is hardcoded; network issue or site down
-#   4. ISO rebuild fails? → Ensure xorriso is installed (preferred) or genisoimage works
-#   5. Boot doesn't auto-install? → Verify preseed.cfg syntax & path in sed lines
+#   3. ISO rebuild fails? → Ensure xorriso is installed (preferred) or genisoimage works
+#   4. Boot doesn't auto-install? → Verify preseed.cfg syntax & path in sed lines
 #      • Try manual boot param edit at GRUB: preseed/file=/cdrom/preseed.cfg
-#   6. General breakage? → Run with bash -x for debug, or search Debian installer docs
+#   5. General breakage? → Run with bash -x for debug, or search Debian installer docs
 #      for current preseed/boot parameter syntax
 #
 # MAINTAINER NOTES / RECREATION SUMMARY:
@@ -46,8 +44,9 @@ trap 'echo "Error - cleaning up..."; rm -rf "$TEMP_DIR" 2>/dev/null' EXIT ERR
 # Config
 BASE_URL="https://cdimage.debian.org/debian-cd/current"
 TEMP_DIR="/tmp/debian-preseed-$(date +%s)"
-MIN_USB_GB=8
 PRESEED_DEFAULT="preseed.cfg"           # Default file in script dir (optional)
+DEBIAN_KEY_ID="0x6294BE9B"                #  Created in 2011. Remains the primary key used to sign official stable ISO images.
+ARCHES=("amd64" "arm64" "ppc64el" "riscv64" "s390x") # List of 64 bit CPU types
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Check/install required packages
@@ -63,7 +62,7 @@ REQUIRED_PKGS=(
     genisoimage # fallback
     isolinux    # boot files
     dosfstools  # FAT utils
-    debian-archive-keyring  # for dynamic Debian keys
+    usbutils # lsusb cmd: utility to display information about all USB devices
 )
 
 sudo apt-get update -qq
@@ -92,6 +91,7 @@ Steps:
 
 1. Windows PowerShell (Admin):
    winget install --exact dorssel.usbipd-win
+   ### Resart the PowerShell ###
    usbipd list                # Find BUSID (e.g. 1-4)
    usbipd bind --busid <BUSID>
    usbipd attach --wsl --busid <BUSID>
@@ -102,7 +102,7 @@ Steps:
 
 After script: usbipd detach --busid <BUSID>
 
-Press Enter when /dev/sdX visible, or Ctrl+C to exit.
+Press Enter if you know the desired usb device (/dev/sdX) is attatched and visible, or Ctrl+C to exit.
 EOF
     read -r
 fi
@@ -110,10 +110,11 @@ fi
 # ──────────────────────────────────────────────────────────────────────────────
 # USB selection
 # ──────────────────────────────────────────────────────────────────────────────
-echo "Plug in USB ≥${MIN_USB_GB}GB (USB 3.0 preferred). Press Enter when ready."
+echo "Plug in USB ≥8GB (USB 3.0 preferred). Press Enter when ready."
 read -r
 
-mapfile -t USB_DRIVES < <(lsblk -dno NAME,SIZE,TRAN,MODEL | awk -v min="$MIN_USB_GB" '$3=="usb" && $2+0 >= min {print "/dev/"$1 " " $2 " " substr($0, index($0,$4)) }')
+# Check for USB Stick sizes greater than 7GB (not 8GB; otherwise it would exclude 8GB USB Sticks).
+mapfile -t USB_DRIVES < <(lsblk -dno NAME,SIZE,TRAN,MODEL | awk -v min="7" '$3=="usb" && $2+0 >= min {print "/dev/"$1 " " $2 " " substr($0, index($0,$4)) }')
 
 (( ${#USB_DRIVES[@]} == 0 )) && { echo "No suitable USB found." >&2; exit 1; }
 
@@ -128,13 +129,8 @@ echo -n "Type YES to continue: "; read -r confirm; [[ "$confirm" == "YES" ]] || 
 echo -n "Type DESTROY to confirm: "; read -r confirm; [[ "$confirm" == "DESTROY" ]] || exit 1
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Fetch architectures dynamically
+# Select architecture
 # ──────────────────────────────────────────────────────────────────────────────
-echo "Fetching architectures..."
-ARCHES=($(curl -s "$BASE_URL/" | grep -o '[a-z0-9]\+/' | sed 's|/||' | sort -u | grep -E '^(amd64|i386|arm64|ppc64el|s390x)$' || true))
-
-(( ${#ARCHES[@]} == 0 )) && ARCHES=("amd64" "i386" "arm64" "ppc64el")
-
 echo "Select architecture:"
 select ARCH in "${ARCHES[@]}"; do [[ -n "$ARCH" ]] && break; done
 
@@ -157,9 +153,12 @@ mkdir -p "$TEMP_DIR"
 cd "$TEMP_DIR"
 
 echo "Downloading ISO, SHA256SUMS, signature..."
-curl -LO "$ISO_URL" "$HASH_URL" "$SIG_URL"
+curl -LO "$ISO_URL"
+curl -LO "$HASH_URL"
+curl -LO "$SIG_URL"
 
-gpg --no-default-keyring --keyring /usr/share/keyrings/debian-archive-keyring.gpg --verify SHA256SUMS.sign SHA256SUMS || { echo "GPG failed!"; exit 1; }
+gpg --keyserver keyring.debian.org --recv-keys $DEBIAN_KEY_ID
+gpg --verify SHA256SUMS.sign SHA256SUMS || { echo "GPG failed!"; exit 1; }
 
 grep -- "$ISO_NAME" SHA256SUMS | sha256sum -c - || { echo "Checksum failed!"; exit 1; }
 
