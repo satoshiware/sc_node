@@ -1,43 +1,16 @@
 #!/usr/bin/env bash
 ########################################################################################
 # SCRIPT:   debian-autoinstall-usb.sh
-# AUTHOR:   Grok 4 (built by xAI)
 # PURPOSE:  Create bootable Debian DVD-1 USB with preseed for fully unattended install
-#           • Uses official current stable hybrid ISO (dd to USB)
-#           • Verifies SHA256 + GPG signature
-#           • Injects preseed.cfg at root → boot param: preseed/file=/cdrom/preseed.cfg
-#
 # REQUIRES (auto-installed if missing):
 #   curl gnupg coreutils rsync xorriso isolinux dosfstools usbutils
 #   sudo privileges
-#
+#   16 GB of free space
 # SAFETY FEATURES:
 #   • Two-step confirmation ("YES" + "DESTROY")
 #   • Only USB devices ≥8 GB shown
 #   • Full hash + signature verification
-#   • Temp files cleaned on exit/error
-#
-# TROUBLESHOOTING / WHAT TO DO IF SCRIPT STOPS WORKING:
-#   1. Debian release changed structure? → Check https://cdimage.debian.org/debian-cd/current/
-#      • Update BASE_URL if path moves (rare)
-#      • Adjust grep -oP regex in ISO_NAME line if filename pattern changes
-#   2. GPG verification fails? → sudo apt install --reinstall debian-archive-keyring
-#   3. ISO rebuild fails? → Ensure xorriso is installed
-#   4. Boot doesn't auto-install? → Verify preseed.cfg syntax & path in sed lines
-#      • Try manual boot param edit at GRUB: preseed/file=/cdrom/preseed.cfg
-#   5. General breakage? → Run with bash -x for debug, or search Debian installer docs
-#      for current preseed/boot parameter syntax
-#
-# MAINTAINER NOTES / RECREATION SUMMARY:
-#   • Fetch arch list → select → fetch latest debian-*-$ARCH-DVD-1.iso name
-#   • Download ISO + SHA256SUMS + .sign
-#   • Verify gpg signature w/ Debian's public stable ISO signing key
-#   • Mount → rsync extract → copy preseed.cfg to root
-#   • sed append to GRUB & isolinux: "preseed/file=/cdrom/preseed.cfg auto=true priority=critical quiet ---"
-#   • Rebuild hybrid with xorriso
-#   • dd bs=4M oflag=direct conv=fsync to selected /dev/sdX
 ########################################################################################
-
 set -euo pipefail
 
 # Config
@@ -176,7 +149,7 @@ if [[ -f "../$PRESEED_DEFAULT" ]]; then
 elif [[ -f "$PRESEED_DEFAULT" ]]; then
     cp "$PRESEED_DEFAULT" extracted/preseed.cfg
 else
-    echo "No default preseed.cfg found in $(pwd). Enter path to your preseed.cfg (or Ctrl+C):"
+    echo "No default preseed.cfg found. Enter path to your preseed.cfg (or Ctrl+C):"
     read -r PRESEED_PATH
     [[ -f "$PRESEED_PATH" ]] && cp "$PRESEED_PATH" extracted/preseed.cfg || { echo "File not found"; exit 1; }
 fi
