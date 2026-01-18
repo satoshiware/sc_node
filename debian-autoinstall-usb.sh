@@ -4,7 +4,7 @@
 # AUTHOR:   Grok 4 (built by xAI)
 # PURPOSE:  Create bootable Debian DVD-1 USB with preseed for fully unattended install
 #           • Uses official current stable hybrid ISO (dd to USB)
-#           • Verifies SHA256 + GPG signature via debian-archive-keyring
+#           • Verifies SHA256 + GPG signature
 #           • Injects preseed.cfg at root → boot param: preseed/file=/cdrom/preseed.cfg
 #
 # REQUIRES (auto-installed if missing):
@@ -31,7 +31,7 @@
 # MAINTAINER NOTES / RECREATION SUMMARY:
 #   • Fetch arch list → select → fetch latest debian-*-$ARCH-DVD-1.iso name
 #   • Download ISO + SHA256SUMS + .sign
-#   • Verify: gpg --keyring /usr/share/keyrings/debian-archive-keyring.gpg --verify
+#   • Verify gpg signature w/ Debian's public stable ISO signing key
 #   • Mount → rsync extract → copy preseed.cfg to root
 #   • sed append to GRUB & isolinux: "preseed/file=/cdrom/preseed.cfg auto=true priority=critical quiet ---"
 #   • Rebuild hybrid with xorriso
