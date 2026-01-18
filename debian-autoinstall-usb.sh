@@ -8,7 +8,7 @@
 #           • Injects preseed.cfg at root → boot param: preseed/file=/cdrom/preseed.cfg
 #
 # REQUIRES (auto-installed if missing):
-#   curl gnupg coreutils rsync xorriso genisoimage isolinux dosfstools usbutils
+#   curl gnupg coreutils rsync xorriso isolinux dosfstools usbutils
 #   sudo privileges
 #
 # SAFETY FEATURES:
@@ -34,7 +34,7 @@
 #   • Verify: gpg --keyring /usr/share/keyrings/debian-archive-keyring.gpg --verify
 #   • Mount → rsync extract → copy preseed.cfg to root
 #   • sed append to GRUB & isolinux: "preseed/file=/cdrom/preseed.cfg auto=true priority=critical quiet ---"
-#   • Rebuild hybrid with xorriso (or genisoimage fallback)
+#   • Rebuild hybrid with xorriso
 #   • dd bs=4M oflag=direct conv=fsync to selected /dev/sdX
 ########################################################################################
 
@@ -73,8 +73,8 @@ for pkg in "${REQUIRED_PKGS[@]}"; do
 done
 
 if ! command -v xorriso >/dev/null; then
-    command -v genisoimage >/dev/null || { echo "No ISO tool found." >&2; exit 1; }
-    echo "Warning: Using genisoimage (xorriso preferred for hybrid)"
+    echo "xorriso command not found." >&2
+    exit 1
 fi
 
 # ──────────────────────────────────────────────────────────────────────────────
