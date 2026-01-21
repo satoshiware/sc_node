@@ -136,7 +136,7 @@ awk '
         print "}"
         print "menuentry \047Debug Preseeded Install\047 {"
         print "    set background_color=black"
-        print "    linux    /install.amd/vmlinuz vga=788 file=/cdrom/sc_node/preseed.cfg priority=low --- quiet"
+        print "    linux    /install.amd/vmlinuz vga=788 DEBCONF_DEBUG=5 file=/cdrom/sc_node/preseed.cfg priority=low --- quiet"
         print "    initrd   /install.amd/initrd.gz"
         print "}"
         inserted=1
@@ -165,8 +165,7 @@ xorriso -as mkisofs -o ../modified.iso \
 # ──────────────────────────────────────────────────────────────────────────────
 # Inform user of success
 # ──────────────────────────────────────────────────────────────────────────────
-cd..
-cat <<'EOF'
+cd ..; cat <<EOF
 =============================================================================
   SC Node Preseeded Debian Installer ISO successfully created!
 =============================================================================
