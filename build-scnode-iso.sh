@@ -30,6 +30,12 @@ if [ "$(sudo -l | grep '(ALL : ALL) ALL' | wc -l)" = 0 ]; then
 fi
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Update and upgrade
+# ──────────────────────────────────────────────────────────────────────────────
+echo "Updating and upgrading..."; sleep 2
+sudo apt update && sudo apt upgrade -y
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Check/install required packages
 # ──────────────────────────────────────────────────────────────────────────────
 echo "Checking/updating required tools..."
@@ -93,37 +99,29 @@ grep -- "$ISO_NAME" SHA256SUMS | sha256sum -c - || { echo "Checksum failed!"; ex
 echo "Verification passed."
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Extract & modify with preseed
+# Add sc_node repo (including the preseed.cfg file) and modify the boot configuration (grub.cfg)
 # ──────────────────────────────────────────────────────────────────────────────
 mkdir -p extracted mnt
 sudo mount -o loop "$ISO_NAME" mnt
-rsync -a mnt/ extracted/
+sudo rsync -a mnt/ extracted/
 sudo umount mnt
 
 # Clone sc_node repository to add to the iso. Used for installing and configuring new Sovereign Circle Nodes after Debian install.
 echo "Cloning SC_Node repository from GitHub..."
-git clone https://github.com/satoshiware/sc_node.git sc_node || {
+sudo git clone https://github.com/satoshiware/sc_node.git sc_node || {
     echo "Error: Failed to clone https://github.com/satoshiware/sc_node" >&2
     exit 1
 }
 
 # Copy sc_node cloned repo into the extracted filesystem (i.e. base directory of the future installed system).
-echo "Copying SC_Node repo contents into base directory..."
+echo "Copying SC_Node repo contents (including the preseed.cfg file) into base directory..."
 sudo rsync -a --exclude='.git' sc_node/ extracted/sc_node
-
-# Set ownership to current user (feels safer, even if xorriso resets it later)
-sudo chown -R "$USER:$USER" extracted/sc_node
-
-# Set all directories w/ readable + executable/traversable permissions
-sudo find extracted/sc_node -type d -exec chmod 555 {} +
-
-# Set all files to read-only
-sudo find extracted/sc_node -type f -exec chmod 444 {} +
 
 # Make all .sh files executable (recursively)
 find extracted/ -type f -name "*.sh" -exec sudo chmod +x {} \;
 
 # Inject GRUB auto-install params before the line with the first menuentry
+echo "Modifying the boot configuration (grub.cfg) file..."; sleep 2
 awk '
 /^menuentry/ {
     if (!inserted) {
@@ -145,18 +143,16 @@ awk '
 { print }
 ' extracted/boot/grub/grub.cfg > grub.tmp || { echo "awk failed" >&2; exit 1; }
 
-# Move updated grub.cfg to proper location and ensure correct ownerships and permissions are set
+# Move updated grub.cfg to proper location and ensure root ownership and read-only permissions are set
 sudo mv grub.tmp ./extracted/boot/grub/grub.cfg
-sudo chown $USER:$USER ./extracted/boot/grub/grub.cfg # Not necessary as xorriso (cmd below) will update file ownership anyways, but it just feels good :-)
+sudo chown root:root ./extracted/boot/grub/grub.cfg
 sudo chmod 444 ./extracted/boot/grub/grub.cfg
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Rebuild hybrid ISO
+# Rebuild hybrid ISO (UEFI boot only)
 # ──────────────────────────────────────────────────────────────────────────────
 echo "Building modified ISO..."
 xorriso -as mkisofs -o ../modified.iso \
-    -b isolinux/isolinux.bin -c isolinux/boot.cat \
-    -no-emul-boot -boot-load-size 4 -boot-info-table \
     -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot \
     -J -R -V 'Debian Preseed Installer' extracted/
 
