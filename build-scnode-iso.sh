@@ -117,8 +117,14 @@ sudo git clone https://github.com/satoshiware/sc_node.git sc_node || {
 echo "Copying SC_Node repo contents (including the preseed.cfg file) into base directory..."
 sudo rsync -a --exclude='.git' sc_node/ extracted/sc_node
 
+# Set all directories w/ readable + executable/traversable permissions
+sudo find extracted/sc_node -type d -exec chmod 755 {} +
+
+# Set all files to read-only
+sudo find extracted/sc_node -type f -exec chmod 644 {} +
+
 # Make all .sh files executable (recursively)
-find extracted/ -type f -name "*.sh" -exec sudo chmod +x {} \;
+find extracted/sc_node -type f -name "*.sh" -exec sudo chmod +x {} \;
 
 # Inject GRUB auto-install params before the line with the first menuentry
 echo "Modifying the boot configuration (grub.cfg) file..."; sleep 2
@@ -147,6 +153,10 @@ awk '
 sudo mv grub.tmp ./extracted/boot/grub/grub.cfg
 sudo chown root:root ./extracted/boot/grub/grub.cfg
 sudo chmod 444 ./extracted/boot/grub/grub.cfg
+
+# Verify preseed.cfg syntax
+echo "Checking preseed syntax ... "
+debconf-set-selections -c ./extracted/sc_node/preseed.cfg || { echo "Preseed syntax validation FAILED!"; cat preseed-validate.err; exit 1; } && echo "Preseed OK"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Rebuild hybrid ISO (UEFI boot only)

@@ -1,15 +1,85 @@
 #!/bin/bash
+# =============================================================================
+# firstboot.sh - One-time first-boot setup wrapper for Sovereign Circle Node
+#
+# Main objective:
+#   Launch setup.sh fully detached and independent from this wrapper.
+#
+# Execution:
+#   - Runs automatically via firstboot-setup.service on first boot only
+#   - firstboot-setup.service was created/enabled by preseed.cfg + late_commands.sh
+#
+# Logging:
+#   - Main output: /var/log/firstboot.log
+#   - setup.sh output: /var/log/setup.log
+#   - Also visible in: journalctl -u firstboot-setup.service
+#   - Syslog tag: scnode-firstboot
+#
+# Safety:
+#   - set -euo pipefail for strict error handling
+#   - Self-disables and cleans up after successful run
+# =============================================================================
 set -euo pipefail
 
-# Wait for internet in case setup.sh needs it
-until curl -s --connect-timeout 5 http://www.google.com >/dev/null; do
-    sleep 3
+FIRSTBOOT_LOG="/var/log/firstboot.log"
+SETUP_SCRIPT="/root/sc_node/setup.sh"
+
+echo "firstboot.sh started at $(date)" >> "$FIRSTBOOT_LOG" 2>&1
+# =============================================================================
+# Wait for internet in case setup.sh needs it (max = 60 seconds)
+# =============================================================================
+echo "Checking internet connectivity..." >> "$FIRSTBOOT_LOG" 2>&1
+for i in {1..15}; do
+    if curl -s --connect-timeout 5 http://www.google.com >/dev/null; then
+        echo "Internet OK after $i attempts" >> "$FIRSTBOOT_LOG" 2>&1
+        break
+    fi
+    echo "Attempt $i - no connection, retrying in 4s..." >> "$FIRSTBOOT_LOG" 2>&1
+    sleep 4
 done
 
-# Execute the setup.sh script fully independent w/ "nohup", "&", and "disown"
-nohup /root/sc_node/setup.sh >> /var/log/setup.log 2>&1 </dev/null &; disown
+if ! curl -s --connect-timeout 5 http://www.google.com >/dev/null; then
+    echo "ERROR: No internet after 15 attempts (~60 seconds). Exiting." >> "$FIRSTBOOT_LOG" 2>&1
+    exit 1
+fi
 
-# Self-cleanup: disable and remove the service
-systemctl disable firstboot-setup.service
-rm -f /etc/systemd/system/firstboot-setup.service
-echo "First-boot chain completed at $(date)" >> /var/log/firstboot.log
+# =============================================================================
+# Launch setup.sh fully detached and independent
+# =============================================================================
+# Pre-check: script must exist and be executable
+if [ ! -f "$SETUP_SCRIPT" ] || [ ! -x "$SETUP_SCRIPT" ]; then
+    echo "ERROR: setup.sh not found or not executable at $SETUP_SCRIPT" >> "$FIRSTBOOT_LOG" 2>&1
+    exit 1
+fi
+
+echo "Launching setup.sh at $(date)" >> "$FIRSTBOOT_LOG" 2>&1
+
+# Launch detached with full output redirection
+nohup "$SETUP_SCRIPT" >> "$FIRSTBOOT_LOG" 2>&1 < /dev/null &
+
+# Immediately capture the PID of the background process
+SETUP_PID=$!
+
+# Give it a moment to start
+sleep 1
+
+# Check if the process is running
+if ps -p $SETUP_PID > /dev/null 2>&1; then
+    echo "setup.sh launched successfully (PID: $SETUP_PID)" >> "$FIRSTBOOT_LOG" 2>&1
+else
+    echo "ERROR: setup.sh failed to launch (PID $SETUP_PID not found)" >> "$FIRSTBOOT_LOG" 2>&1
+    exit 1
+fi
+
+# disown to fully detach from shell session
+disown $SETUP_PID 2>/dev/null || true
+
+# =============================================================================
+# Self-disable and cleanup
+# =============================================================================
+echo "Disabling and removing firstboot-setup.service" >> "$FIRSTBOOT_LOG" 2>&1
+systemctl disable firstboot-setup.service || true
+rm -f /etc/systemd/system/firstboot-setup.service || true
+systemctl daemon-reload || true
+echo "firstboot-setup.service disabled and removed successfully" >> "$FIRSTBOOT_LOG" 2>&1
+echo "firstboot.sh script completed at $(date)" >> "$FIRSTBOOT_LOG" 2>&1
