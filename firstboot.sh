@@ -1,23 +1,14 @@
 #!/bin/bash
 # =============================================================================
-# firstboot.sh - One-time first-boot setup wrapper for Sovereign Circle Node
-#
-# Main objective:
-#   Launch setup.sh fully detached and independent from this wrapper.
+# One-time first-boot setup wrapper for Sovereign Circle Node
+# It launches the setup.sh script fully detached and independent from this wrapper
 #
 # Execution:
 #   - Runs automatically via firstboot-setup.service on first boot only
-#   - firstboot-setup.service was created/enabled by preseed.cfg + late_commands.sh
+#   - Note: firstboot-setup.service was created/enabled by preseed.cfg + late_commands.sh
+#   - Self-disables and cleans up after successful run to prevent re-execution
 #
-# Logging:
-#   - Main output: /var/log/firstboot.log
-#   - setup.sh output: /var/log/setup.log
-#   - Also visible in: journalctl -u firstboot-setup.service
-#   - Syslog tag: scnode-firstboot
-#
-# Safety:
-#   - set -euo pipefail for strict error handling
-#   - Self-disables and cleans up after successful run
+# Logging: /var/log/firstboot.log
 # =============================================================================
 set -euo pipefail
 
@@ -65,7 +56,7 @@ sleep 1
 
 # Check if the process is running
 if ps -p $SETUP_PID > /dev/null 2>&1; then
-    echo "setup.sh launched successfully (PID: $SETUP_PID)" >> "$FIRSTBOOT_LOG" 2>&1
+    echo "setup.sh launched successfully (PID: $SETUP_PID) at $(date)" >> "$FIRSTBOOT_LOG" 2>&1
 else
     echo "ERROR: setup.sh failed to launch (PID $SETUP_PID not found)" >> "$FIRSTBOOT_LOG" 2>&1
     exit 1
