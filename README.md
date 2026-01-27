@@ -50,7 +50,7 @@ Proxmox VE serves as the foundational hypervisor for the SC Node, providing robu
 ### Stratum V2 Translation Proxy (SRI) (Bitcoin)
 * Configure w/ High Verbosity (RUST_LOG=info or debug)
 * API: Python w/ FastAPI (RESTful & WebSockets)
-  * Use Python's asyncio to tail the log file (or pipe stdout) in real time.
+  * Use Python`s asyncio to tail the log file (or pipe stdout) in real time.
   * Process data as desired and store rolling windows to a lightweight DB (SQLite).
   * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
 * Backup: None
@@ -58,7 +58,7 @@ Proxmox VE serves as the foundational hypervisor for the SC Node, providing robu
 ### Stratum V2 Translation Proxy (SRI) (AZCoin)
 * Configure w/ High Verbosity (RUST_LOG=info or debug)
 * API: Python w/ FastAPI (RESTful & WebSockets)
-  * Use Python's asyncio to tail the log file (or pipe stdout) in real time.
+  * Use Python`s asyncio to tail the log file (or pipe stdout) in real time.
   * Process data as desired and store rolling windows to a lightweight DB (SQLite).
   * Static API Keys for Basic Internal Authorization (Rotate keys periodically for best security)
 * Backup: None
@@ -87,34 +87,38 @@ Proxmox VE serves as the foundational hypervisor for the SC Node, providing robu
 * Cold Storage Management
 * See Overall Mining Stats & Payouts
 
-## Create Debian (Current "Stable" Release) Full Install USB Stick (using Windows)
+## Build Installation ISO
+Download and execute the sc_node/build-scnode-iso.sh script, on linux, in any $USER directory w/ sudo privileges. Once complete, the iso (named "modified.iso") will have been remastered into the execution directory. *Note: This project does **not** involve traditional compilation of source code.  Instead, it **remasters** an official Debian DVD-1 ISO (stable release) with the following changes:*
 
-Note: Full install (iso-dvd) is recommended over net install (iso-cd) to speed up installation on dozens or more SC Nodes.
-	  Select "network mirror" during install to ensure all packages are the latest. 
-	  Also, a USB 3.0 Stick is recommended to speed things up further.
+- sc_node`s preseed file (sc_node/preseed.cfg) is configured for full automated installation
+- The entire `sc_node` repository is added to the target filesystem (/root/sc_node)
+- GRUB boot menu is configured to offer preseeded auto-install (and debug) options where the auto-install will auto run within 5 seconds
 
-### Download the Debian .iso Image
-	* Go to https://cdimage.debian.org/debian-cd/current
-	* Select Link for Target CPU (Options: amd64, arm64, riscv64, etc.)
-	* Select "iso-dvd" Link
-	* Download Files:
- 	    -SHA256SUMS.sign
-	    -SHA256SUMS
-	    -debian-XX.X.X-xxxxx-DVD-1.iso
+The end result is a bootable ISO that performs a hands-free Debian installation tailored to be a Sovereign Circle Node. As the install is completed on a new SC Node, the system is configured to run the setup script (sc_node/setup.sh), launched by the firstboot.sh script, on first boot. The preseed.cfg and late_commands.sh files govern this configuration. WARNING! A USB with this ISO will delete the first non-removable disk with maximum LVM partition automatically and without any prompts!!!
 
-### Verify .iso Image
-	* Download/Install Gpg4win (https://www.gpg4win.org)
- 	    Note: Only GnuPG is Needed (Not Kleopatra, GpgOL, GpgOL/Web, GpgEX, etc.)
-	* From the Powershell
- 	    -Import and verify Debian's signing public keys
-			     gpg --keyserver hkps://keyring.debian.org --recv-keys 0x6294BE9B # Download
-			     gpg --list-keys "Debian" # Verify
- 	    -Locate the directory that contains the downloads
- 	    -Verify signature. Expect a "WARNING" if Debian's key has not been certified with a "trusted" signature!
-			     gpg --keyring .\debian-signing-public-key.gpg --verify SHA256SUMS.sign SHA256SUMS
- 	    -Verify ISO checksum matches the checksum found in the SHA256SUMS file
-			     Get-FileHash debian-XX.X.X-xxxxx-DVD-1.iso -Algorithm SHA256
-			     Select-String "debian-XX.X.X-xxxxx-DVD-1.iso" SHA256SUMS
+Other notable ISO mentions, apart from a standard Debian install, **not including the setup.sh script**:
 
-### Download/Install Rufus (If not already; Located on Microsoft store)
-### Use Rufus to "burn" the .iso image to the USB Stick (default options are good)
+- **UTC** timezone (location-independent)
+- **hostname**: sc-node
+- **domain**: internal
+- **root** login disabled
+- **user**: satoshi (w/ sudo rights)
+    - **passwd**: satoshi
+    - **name**: Satoshi Nakamoto
+- **curl** utility installed
+
+### Requirements
+- A linux host system w/ **sudo** privileges
+- ~16 GB free disk space (original ISO ≈ 4.7 GB + extracted contents + temporary files)
+- Good Internet (for downloading ~4.7 GB ISO + tools/repo)
+- Required packages (automatically installed if missing): `git`, `curl`, `gnupg`, `rsync`, `xorriso`
+
+## Create USB Install Stick
+Dedicated USB with 8GB+ is required.
+USB 3.0+ is highly recommended to shorten install times.
+
+1. Download the latest ISO for your CPU from the GitHub release page: https://github.com/satoshiware/sc_node/releases
+
+2. Verify Checksum and Signatures
+
+3. Depending on your OS (Windows, Linux, or even Linux on Windows [WSL]), search for an online guide to correctly write an ISO to a USB drive so that it will boot and install as desired.
