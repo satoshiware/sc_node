@@ -94,9 +94,9 @@ Download and execute the sc_node/build-scnode-iso.sh script, on linux, in any $U
 - The entire `sc_node` repository is added to the target filesystem (/root/sc_node)
 - GRUB boot menu is configured to offer preseeded auto-install (and debug) options where the auto-install will auto run within 5 seconds
 
-The end result is a bootable ISO that performs a hands-free Debian installation tailored to be a Sovereign Circle Node. As the install is completed on a new SC Node, the system is configured to run the setup script (sc_node/setup.sh), launched by the firstboot.sh script, on first boot. The preseed.cfg and late_commands.sh files govern this configuration. WARNING! A USB with this ISO will delete the first non-removable disk with maximum LVM partition automatically and without any prompts!!!
+The end result is a bootable ISO that performs a hands-free Debian installation tailored to be a Sovereign Circle Node. As the install is completed on a new SC Node, the system is configured to run the setup script (sc_node/setup.sh), launched by the firstboot.sh script, on first boot. The preseed.cfg and late_commands.sh files govern this configuration. **WARNING! A USB with this ISO will delete the first non-removable disk with maximum LVM partition automatically and without any prompts!!!**
 
-Other notable ISO mentions, apart from a standard Debian install, **not including the setup.sh script**:
+Notable configurations by the preseed.cfg file, **not including the setup.sh script**:
 
 - **UTC** timezone (location-independent)
 - **hostname**: sc-node
@@ -122,3 +122,5 @@ USB 3.0+ is highly recommended to shorten install times.
 2. Verify Checksum and Signatures
 
 3. Depending on your OS (Windows, Linux, or even Linux on Windows [WSL]), search for an online guide to correctly write an ISO to a USB drive so that it will boot and install as desired.
+
+*Note: Be sure the target machine has wired internet; otherwise, the setup will prompt for networking configuration during install. It’s recommended the install process has internet access to ensure the most up-to-date Debian install files. Also, the setup.sh script run first boot requires it!*
